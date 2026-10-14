@@ -4,7 +4,7 @@ use bytes::Bytes;
 use futures::TryStreamExt;
 use icechunk::format::ByteRange;
 use icechunk::store::{Store, StoreErrorKind};
-use napi::bindgen_prelude::{Buffer, Uint8Array};
+use napi::bindgen_prelude::Uint8Array;
 use napi_derive::napi;
 
 use crate::errors::IntoNapiResult;
@@ -36,20 +36,14 @@ unsafe impl Send for SendStore {}
 #[cfg(target_family = "wasm")]
 unsafe impl Sync for SendStore {}
 
-#[cfg(not(target_family = "wasm"))]
 use chrono::{DateTime, Utc};
-#[cfg(not(target_family = "wasm"))]
 use icechunk::format::manifest::{
     Checksum, SecondsSinceEpoch, VirtualChunkLocation, VirtualChunkRef,
 };
-#[cfg(not(target_family = "wasm"))]
 use icechunk::format::{ChunkIndices, Path};
-#[cfg(not(target_family = "wasm"))]
 use icechunk::storage::ETag;
-#[cfg(not(target_family = "wasm"))]
 use icechunk::store::SetVirtualRefsResult;
 
-#[cfg(not(target_family = "wasm"))]
 /// Create a checksum from either an etag string or a last-modified datetime
 /// etag_checksum takes precedence if both are provided
 fn create_checksum(
@@ -63,7 +57,6 @@ fn create_checksum(
 }
 
 /// Specification for a virtual chunk reference
-#[cfg(not(target_family = "wasm"))]
 #[napi(object, js_name = "VirtualChunkSpec")]
 #[derive(Clone, Debug)]
 pub struct JsVirtualChunkSpec {
@@ -126,7 +119,7 @@ impl JsStore {
     }
 
     #[napi]
-    pub async fn set(&self, key: String, value: Buffer) -> napi::Result<()> {
+    pub async fn set(&self, key: String, value: Uint8Array) -> napi::Result<()> {
         let key = normalize_key(&key);
         let bytes = Bytes::from(value.to_vec());
         self.0.set(key, bytes).await.map_napi_err()
@@ -202,7 +195,7 @@ impl JsStore {
     pub async fn set_if_not_exists(
         &self,
         key: String,
-        value: Buffer,
+        value: Uint8Array,
     ) -> napi::Result<()> {
         let key = normalize_key(&key);
         let bytes = Bytes::from(value.to_vec());
@@ -227,7 +220,6 @@ impl JsStore {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
 #[napi]
 impl JsStore {
     /// Set a single virtual reference to a chunk

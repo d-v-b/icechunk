@@ -12,14 +12,13 @@ use icechunk::storage::{
     StorageContext, StorageError, StorageInfo, StorageResult, VersionInfo,
     VersionedUpdateResult,
 };
-use napi::bindgen_prelude::{Buffer, Promise};
+use napi::bindgen_prelude::{Promise, Uint8Array};
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::errors::IntoNapiResult;
 
-#[cfg(not(target_family = "wasm"))]
 use std::collections::HashMap;
 
 #[napi(js_name = "Storage")]
@@ -68,7 +67,7 @@ impl From<&VersionInfo> for JsStorageVersionInfo {
 /// Result of a get_object_range call from JS
 #[napi(object, js_name = "StorageGetObjectResponse")]
 pub(crate) struct JsStorageGetObjectResponse {
-    pub data: Buffer,
+    pub data: Uint8Array,
     pub version: JsStorageVersionInfo,
 }
 
@@ -138,10 +137,13 @@ pub(crate) struct JsStorageKeyValue {
 }
 
 /// Arguments for put_object callback
+///
+/// Byte fields are `Uint8Array`, not Node's `Buffer` (a `Uint8Array` subclass), because a
+/// browser has no `Buffer` to construct and the wasm runtime would throw creating one.
 #[napi(object, js_name = "StoragePutObjectArgs")]
 pub(crate) struct JsStoragePutObjectArgs {
     pub path: String,
-    pub data: Buffer,
+    pub data: Uint8Array,
     pub content_type: Option<String>,
     pub metadata: Vec<JsStorageKeyValue>,
     pub previous_version: Option<JsStorageVersionInfo>,
@@ -186,7 +188,7 @@ pub(crate) struct JsStorageGetObjectConditionalArgs {
 pub(crate) struct JsStorageGetModifiedResult {
     /// "modified" or "on_latest_version"
     pub kind: String,
-    pub data: Option<Buffer>,
+    pub data: Option<Uint8Array>,
     pub new_version: Option<JsStorageVersionInfo>,
 }
 
@@ -459,6 +461,44 @@ impl Storage for JsCallbackStorage {
     }
 }
 
+/// HTTP object store configuration carrying transport options and static auth headers.
+#[napi(object, js_name = "HttpConfig")]
+#[derive(Clone, Debug, Default)]
+pub struct JsHttpConfig {
+    /// Generic transport options (`ClientConfigKey` names → values).
+    pub opts: HashMap<String, String>,
+    /// Static HTTP headers injected into every request (e.g. `"authorization": "Bearer …"`).
+    pub headers: HashMap<String, String>,
+}
+
+/// Object store configuration for virtual chunk containers.
+///
+/// WASM builds link no cloud SDKs, so only the variants they can describe exist here: an HTTP
+/// container's chunks are fetched by the runtime-provided fetcher
+/// (`Repository.setHttpVirtualChunkFetcher`), and writing references needs no fetcher at all.
+#[cfg(target_family = "wasm")]
+#[napi(js_name = "ObjectStoreConfig")]
+#[derive(Clone, Debug)]
+pub enum JsObjectStoreConfig {
+    InMemory,
+    Http(JsHttpConfig),
+}
+
+#[cfg(target_family = "wasm")]
+impl From<JsObjectStoreConfig> for icechunk::ObjectStoreConfig {
+    fn from(config: JsObjectStoreConfig) -> Self {
+        match config {
+            JsObjectStoreConfig::InMemory => icechunk::ObjectStoreConfig::InMemory,
+            JsObjectStoreConfig::Http(js_config) => {
+                icechunk::ObjectStoreConfig::Http(icechunk::config::HttpConfig {
+                    opts: js_config.opts,
+                    headers: js_config.headers,
+                })
+            }
+        }
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod native {
     use super::*;
@@ -692,16 +732,6 @@ mod native {
                 JsCredentials::Azure(c) => icechunk::config::Credentials::Azure(c.into()),
             }
         }
-    }
-
-    /// HTTP object store configuration carrying transport options and static auth headers.
-    #[napi(object, js_name = "HttpConfig")]
-    #[derive(Clone, Debug, Default)]
-    pub struct JsHttpConfig {
-        /// Generic transport options (`ClientConfigKey` names → values).
-        pub opts: HashMap<String, String>,
-        /// Static HTTP headers injected into every request (e.g. `"authorization": "Bearer …"`).
-        pub headers: HashMap<String, String>,
     }
 
     /// Object store configuration for virtual chunk containers

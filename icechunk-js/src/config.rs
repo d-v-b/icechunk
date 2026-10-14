@@ -11,10 +11,8 @@ use icechunk::storage::{
     ConcurrencySettings, RetriesSettings, Settings, TimeoutSettings,
 };
 
-#[cfg(not(target_family = "wasm"))]
 use icechunk::virtual_chunks::VirtualChunkContainer;
 
-#[cfg(not(target_family = "wasm"))]
 use crate::storage::JsObjectStoreConfig;
 
 /// Compression algorithm
@@ -169,7 +167,6 @@ impl From<JsStorageSettings> for Settings {
 }
 
 /// Virtual chunk container configuration
-#[cfg(not(target_family = "wasm"))]
 #[napi(object, js_name = "VirtualChunkContainer")]
 #[derive(Clone, Debug)]
 pub struct JsVirtualChunkContainer {
@@ -198,7 +195,6 @@ pub struct JsVirtualChunkContainer {
 ///   }
 /// }
 /// ```
-#[cfg(not(target_family = "wasm"))]
 #[napi(object, js_name = "RepositoryConfig")]
 #[derive(Clone, Debug)]
 pub struct JsRepositoryConfig {
@@ -214,23 +210,6 @@ pub struct JsRepositoryConfig {
     pub manifest: Option<serde_json::Value>,
     /// Virtual chunk containers configuration
     pub virtual_chunk_containers: Option<HashMap<String, JsVirtualChunkContainer>>,
-}
-
-/// Repository configuration (WASM build — no virtual chunk support)
-#[cfg(target_family = "wasm")]
-#[napi(object, js_name = "RepositoryConfig")]
-#[derive(Clone, Debug)]
-pub struct JsRepositoryConfig {
-    pub inline_chunk_threshold_bytes: Option<u32>,
-    pub get_partial_values_concurrency: Option<u32>,
-    pub compression: Option<JsCompressionConfig>,
-    pub max_concurrent_requests: Option<u32>,
-    pub max_concurrent_decodes: Option<u32>,
-    pub caching: Option<JsCachingConfig>,
-    pub storage: Option<JsStorageSettings>,
-    /// Manifest configuration, passed as a JSON-compatible object.
-    /// The object is deserialized using serde, matching the Rust ManifestConfig structure.
-    pub manifest: Option<serde_json::Value>,
 }
 
 impl From<RepositoryConfig> for JsRepositoryConfig {
@@ -288,7 +267,6 @@ impl From<RepositoryConfig> for JsRepositoryConfig {
                     .map(|v| v as i64),
             }),
             manifest: value.manifest.and_then(|m| serde_json::to_value(m).ok()),
-            #[cfg(not(target_family = "wasm"))]
             virtual_chunk_containers: None, // Cannot easily round-trip VirtualChunkContainer
         }
     }
@@ -303,7 +281,6 @@ impl TryFrom<JsRepositoryConfig> for RepositoryConfig {
             .map(|v| serde_json::from_value(v).map_err(|e| e.to_string()))
             .transpose()?;
 
-        #[cfg(not(target_family = "wasm"))]
         let virtual_chunk_containers = value
             .virtual_chunk_containers
             .map(|containers| {
@@ -317,8 +294,6 @@ impl TryFrom<JsRepositoryConfig> for RepositoryConfig {
                     .collect::<Result<HashMap<_, _>, String>>()
             })
             .transpose()?;
-        #[cfg(target_family = "wasm")]
-        let virtual_chunk_containers = None;
 
         Ok(RepositoryConfig {
             inline_chunk_threshold_bytes: value

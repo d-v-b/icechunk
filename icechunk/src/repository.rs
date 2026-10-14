@@ -1803,6 +1803,11 @@ impl Repository {
         {
             return;
         }
+        // Preloading is a detached background task, and single-threaded wasm has no runtime
+        // to run one on (see `crate::compat`). Skipping it costs only the warm cache.
+        if cfg!(all(target_family = "wasm", not(target_feature = "atomics"))) {
+            return;
+        }
         tokio::spawn(async move {
             let mut loaded_manifests: HashSet<ManifestId> = HashSet::new();
             let mut loaded_refs: u32 = 0;

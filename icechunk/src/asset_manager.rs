@@ -1004,7 +1004,7 @@ impl AssetManager {
                         ?delay,
                         "Repo info updated concurrently, retrying..."
                     );
-                    tokio::time::sleep(delay).await;
+                    crate::compat::sleep(delay).await;
                     attempts += 1;
                 }
                 err @ Err(_) => {
@@ -1090,7 +1090,7 @@ impl AssetManager {
                         )),
                 );
                 #[cfg(feature = "napi-send-contract")]
-                let retry = retry.sleep(tokio::time::sleep);
+                let retry = retry.sleep(crate::compat::sleep);
                 let chunk = retry
                     .when(|e| RETRYABLE_ERROR.is_match(&format!("{e:?}")))
                     .notify(|err, duration| {
@@ -1556,7 +1556,7 @@ where
 
     // keep error span ancestry on the blocking thread
     let span = tracing::Span::current();
-    tokio::task::spawn_blocking(move || -> RepositoryResult<(T, FileHeader)> {
+    crate::compat::spawn_blocking(move || -> RepositoryResult<(T, FileHeader)> {
         let _entered = span.entered();
         // Acquired here, not on the async task: an unpolled async waiter never takes the permit it is handed.
         // release on decode completion, not on cancelled-future drop

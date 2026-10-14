@@ -131,7 +131,7 @@ where
         .build();
 
     op.retry(backoff)
-        .sleep(tokio::time::sleep)
+        .sleep(crate::compat::sleep)
         .when(|e| {
             matches!(
                 e,
