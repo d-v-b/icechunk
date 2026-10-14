@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Icechunk single-threaded wasm</title>
+  </head>
+  <body>
+    <h1>Icechunk, single-threaded wasm, no cross-origin isolation</h1>
+    <p>
+      This page writes an Icechunk repository into JS memory with the <code>wasm32-wasip1</code>
+      build. Serve it with any static server that sends no COOP/COEP headers.
+    </p>
+    <pre id="out">running…</pre>
+    <script type="module">
+      const out = document.getElementById('out')
+      const env = {
+        crossOriginIsolated: globalThis.crossOriginIsolated,
+        sharedArrayBuffer: typeof SharedArrayBuffer,
+      }
+      try {
+        const ic = await import('./icechunk.js')
+        const { writeRepo } = await import('./write-repo.mjs')
+        // virtual chunks live next to this page; any HTTP URL works for writing
+        const result = await writeRepo(ic, new URL('./', location.href).href)
+        window.__result = { ok: true, env, ...result }
+      } catch (e) {
+        window.__result = { ok: false, env, error: String(e?.stack ?? e) }
+      }
+      const { objects, ...summary } = window.__result
+      out.textContent = JSON.stringify(
+        { ...summary, objects: objects?.map(({ path, size }) => ({ path, size })) },
+        null,
+        2,
+      )
+    </script>
+  </body>
+</html>
