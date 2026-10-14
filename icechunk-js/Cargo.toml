@@ -33,6 +33,9 @@ icechunk = { path = "../icechunk" }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 icechunk = { path = "../icechunk", default-features = false, features = ["napi-send-contract"] }
+# `async-runtime` lets single-threaded wasm (`wasm32-wasip1`) register its own JS-driven
+# executor (src/st_runtime.rs) in place of napi's Tokio runtime, which needs threads.
+napi = { version = "3.9.0", features = ["async-runtime"] }
 
 [build-dependencies]
-napi-build = "~2.3"
+napi-build = "2.6"
