@@ -98,7 +98,7 @@ export declare class Store {
    *   { suffixLength: number } - fetch the last suffixLength bytes
    */
   getRange(key: string, range: RangeQuery): Promise<Uint8Array | null>
-  set(key: string, value: Buffer): Promise<void>
+  set(key: string, value: Uint8Array): Promise<void>
   exists(key: string): Promise<boolean>
   delete(key: string): Promise<void>
   list(): Promise<Array<string>>
@@ -111,7 +111,7 @@ export declare class Store {
   get session(): Session
   isEmpty(prefix: string): Promise<boolean>
   clear(): Promise<void>
-  setIfNotExists(key: string, value: Buffer): Promise<void>
+  setIfNotExists(key: string, value: Uint8Array): Promise<void>
   deleteDir(prefix: string): Promise<void>
   getsize(key: string): Promise<number>
   getsizePrefix(prefix: string): Promise<number>
@@ -395,7 +395,7 @@ export interface StorageDeleteObjectsResult {
 export interface StorageGetModifiedResult {
   /** "modified" or "on_latest_version" */
   kind: string
-  data?: Buffer
+  data?: Uint8Array
   newVersion?: StorageVersionInfo
 }
 
@@ -414,7 +414,7 @@ export interface StorageGetObjectRangeArgs {
 
 /** Result of a get_object_range call from JS */
 export interface StorageGetObjectResponse {
-  data: Buffer
+  data: Uint8Array
   version: StorageVersionInfo
 }
 
@@ -431,10 +431,15 @@ export interface StorageListInfo {
   sizeBytes: number
 }
 
-/** Arguments for put_object callback */
+/**
+ * Arguments for put_object callback
+ *
+ * Byte fields are `Uint8Array`, not Node's `Buffer` (a `Uint8Array` subclass), because a
+ * browser has no `Buffer` to construct and the wasm runtime would throw creating one.
+ */
 export interface StoragePutObjectArgs {
   path: string
-  data: Buffer
+  data: Uint8Array
   contentType?: string
   metadata: Array<StorageKeyValue>
   previousVersion?: StorageVersionInfo

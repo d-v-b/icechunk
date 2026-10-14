@@ -12,7 +12,7 @@ use icechunk::storage::{
     StorageContext, StorageError, StorageInfo, StorageResult, VersionInfo,
     VersionedUpdateResult,
 };
-use napi::bindgen_prelude::{Buffer, Promise};
+use napi::bindgen_prelude::{Promise, Uint8Array};
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -68,7 +68,7 @@ impl From<&VersionInfo> for JsStorageVersionInfo {
 /// Result of a get_object_range call from JS
 #[napi(object, js_name = "StorageGetObjectResponse")]
 pub(crate) struct JsStorageGetObjectResponse {
-    pub data: Buffer,
+    pub data: Uint8Array,
     pub version: JsStorageVersionInfo,
 }
 
@@ -138,10 +138,13 @@ pub(crate) struct JsStorageKeyValue {
 }
 
 /// Arguments for put_object callback
+///
+/// Byte fields are `Uint8Array`, not Node's `Buffer` (a `Uint8Array` subclass), because a
+/// browser has no `Buffer` to construct and the wasm runtime would throw creating one.
 #[napi(object, js_name = "StoragePutObjectArgs")]
 pub(crate) struct JsStoragePutObjectArgs {
     pub path: String,
-    pub data: Buffer,
+    pub data: Uint8Array,
     pub content_type: Option<String>,
     pub metadata: Vec<JsStorageKeyValue>,
     pub previous_version: Option<JsStorageVersionInfo>,
@@ -186,7 +189,7 @@ pub(crate) struct JsStorageGetObjectConditionalArgs {
 pub(crate) struct JsStorageGetModifiedResult {
     /// "modified" or "on_latest_version"
     pub kind: String,
-    pub data: Option<Buffer>,
+    pub data: Option<Uint8Array>,
     pub new_version: Option<JsStorageVersionInfo>,
 }
 
