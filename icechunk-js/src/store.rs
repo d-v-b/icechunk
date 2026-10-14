@@ -36,20 +36,14 @@ unsafe impl Send for SendStore {}
 #[cfg(target_family = "wasm")]
 unsafe impl Sync for SendStore {}
 
-#[cfg(not(target_family = "wasm"))]
 use chrono::{DateTime, Utc};
-#[cfg(not(target_family = "wasm"))]
 use icechunk::format::manifest::{
     Checksum, SecondsSinceEpoch, VirtualChunkLocation, VirtualChunkRef,
 };
-#[cfg(not(target_family = "wasm"))]
 use icechunk::format::{ChunkIndices, Path};
-#[cfg(not(target_family = "wasm"))]
 use icechunk::storage::ETag;
-#[cfg(not(target_family = "wasm"))]
 use icechunk::store::SetVirtualRefsResult;
 
-#[cfg(not(target_family = "wasm"))]
 /// Create a checksum from either an etag string or a last-modified datetime
 /// etag_checksum takes precedence if both are provided
 fn create_checksum(
@@ -63,7 +57,6 @@ fn create_checksum(
 }
 
 /// Specification for a virtual chunk reference
-#[cfg(not(target_family = "wasm"))]
 #[napi(object, js_name = "VirtualChunkSpec")]
 #[derive(Clone, Debug)]
 pub struct JsVirtualChunkSpec {
@@ -227,7 +220,6 @@ impl JsStore {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
 #[napi]
 impl JsStore {
     /// Set a single virtual reference to a chunk

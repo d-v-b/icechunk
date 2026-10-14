@@ -19,7 +19,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::errors::IntoNapiResult;
 
-#[cfg(not(target_family = "wasm"))]
 use std::collections::HashMap;
 
 #[napi(js_name = "Storage")]
@@ -462,6 +461,44 @@ impl Storage for JsCallbackStorage {
     }
 }
 
+/// HTTP object store configuration carrying transport options and static auth headers.
+#[napi(object, js_name = "HttpConfig")]
+#[derive(Clone, Debug, Default)]
+pub struct JsHttpConfig {
+    /// Generic transport options (`ClientConfigKey` names → values).
+    pub opts: HashMap<String, String>,
+    /// Static HTTP headers injected into every request (e.g. `"authorization": "Bearer …"`).
+    pub headers: HashMap<String, String>,
+}
+
+/// Object store configuration for virtual chunk containers.
+///
+/// WASM builds link no cloud SDKs, so only the variants they can describe exist here: an HTTP
+/// container's chunks are fetched by the runtime-provided fetcher
+/// (`Repository.setHttpVirtualChunkFetcher`), and writing references needs no fetcher at all.
+#[cfg(target_family = "wasm")]
+#[napi(js_name = "ObjectStoreConfig")]
+#[derive(Clone, Debug)]
+pub enum JsObjectStoreConfig {
+    InMemory,
+    Http(JsHttpConfig),
+}
+
+#[cfg(target_family = "wasm")]
+impl From<JsObjectStoreConfig> for icechunk::ObjectStoreConfig {
+    fn from(config: JsObjectStoreConfig) -> Self {
+        match config {
+            JsObjectStoreConfig::InMemory => icechunk::ObjectStoreConfig::InMemory,
+            JsObjectStoreConfig::Http(js_config) => {
+                icechunk::ObjectStoreConfig::Http(icechunk::config::HttpConfig {
+                    opts: js_config.opts,
+                    headers: js_config.headers,
+                })
+            }
+        }
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod native {
     use super::*;
@@ -695,16 +732,6 @@ mod native {
                 JsCredentials::Azure(c) => icechunk::config::Credentials::Azure(c.into()),
             }
         }
-    }
-
-    /// HTTP object store configuration carrying transport options and static auth headers.
-    #[napi(object, js_name = "HttpConfig")]
-    #[derive(Clone, Debug, Default)]
-    pub struct JsHttpConfig {
-        /// Generic transport options (`ClientConfigKey` names → values).
-        pub opts: HashMap<String, String>,
-        /// Static HTTP headers injected into every request (e.g. `"authorization": "Bearer …"`).
-        pub headers: HashMap<String, String>,
     }
 
     /// Object store configuration for virtual chunk containers
